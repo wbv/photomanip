@@ -111,14 +111,34 @@ The output will be a PGM (grayscale) file.
 
 
 ### Negate (-n)
-For each value, we use the maximum pixel value possible (given in the file header, usually 255) and subtract the pixel from this value:
+For each value, we use the maximum pixel value possible (given in the file
+header, usually 255) and subtract the pixel from this value:
 ```
 new_value = MAX - value
 ```
 
 
 ### Sharpen (-p)
-For each value, we use four cardinal neighbors of that value.
+For each value, we use four cardinal neighbors of that value to determine a new
+value by subtracting the neighbor values from 5 times the original value:
+```
+   N
+ W v E
+   S
+
+new value (at v) = 5*v - N - S - E - W
+```
+
+We will assume that a neighbor which falls off an edge has the same value as the original value (v).
 
 ### Smooth (-s)
-For each value, we use all eight neighbor values.
+For each value, we use all eight neighbor values and the original value and form a new value from the unweighted average of those values:
+```
+NW N NE
+W  v  E
+SW S SE
+
+new value (at v) = (NW + N + NE + W + v + E + SW + S + SE) / 9
+```
+
+We will assume that a neighbor which falls of an edge has the same value as the original value (v).
