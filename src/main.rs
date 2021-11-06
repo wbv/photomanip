@@ -23,17 +23,16 @@ enum OutputMode {
 
 /// All runtime options collected together
 #[derive(Debug)]
-struct ProgOpts<'a> {
+struct ProgOpts {
     op: ManipOption,
     mode: OutputMode,
-    infile: Box<&'a str>,
-    outfile: Box<&'a str>,
+    infile: String,
+    outfile: String,
 }
 
 
-/// TODO: implement
 /// Parses the commandline variables into a program state struct
-fn parse_args<'a, I>(args: I) -> Result<ProgOpts<'a>, ()>
+fn parse_args<I>(args: I) -> Result<ProgOpts, ()>
 where
     I: Iterator<Item = String>
 {
@@ -56,11 +55,17 @@ where
         _ => return Err(()),
     };
 
+    let mode = match args[args.len() - 3].as_str() {
+        "-oa" => OutputMode::Ascii,
+        "-ob" => OutputMode::Binary,
+        _ => return Err(()),
+    };
+
     return Ok(ProgOpts {
         op: op,
-        mode: OutputMode::Ascii,
-        infile: Box::new("infile"),
-        outfile: Box::new("outfile")
+        mode: mode,
+        infile: args[args.len() - 2].clone(),
+        outfile: args[args.len() - 1].clone(),
     });
 }
 
@@ -79,8 +84,8 @@ mod tests {
     use super::*;
 
     // define a comparator for ProgOpts for testing
-    impl<'a> PartialEq for ProgOpts<'a> {
-        fn eq(&self, other: &ProgOpts<'a>) -> bool {
+    impl PartialEq for ProgOpts {
+        fn eq(&self, other: &ProgOpts) -> bool {
             self.op      == other.op      &&
             self.mode    == other.mode    &&
             self.infile  == other.infile  &&
@@ -98,8 +103,8 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Binary,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-ob infile outfile");
@@ -112,11 +117,39 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Ascii,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-oa infile outfile");
+        let got = parse_args(cmdline.into_iter()).unwrap();
+        assert_eq!(got, should_be);
+    }
+
+    #[test]
+    fn test_outfile() {
+        let should_be = ProgOpts {
+            op: ManipOption::DoNothing,
+            mode: OutputMode::Ascii,
+            infile: String::from("infile"),
+            outfile: String::from("test!"),
+        };
+
+        let cmdline = to_args("-oa infile test!");
+        let got = parse_args(cmdline.into_iter()).unwrap();
+        assert_eq!(got, should_be);
+    }
+
+    #[test]
+    fn test_infile() {
+        let should_be = ProgOpts {
+            op: ManipOption::DoNothing,
+            mode: OutputMode::Ascii,
+            infile: String::from("tested!"),
+            outfile: String::from("outfile"),
+        };
+
+        let cmdline = to_args("-oa tested! outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
         assert_eq!(got, should_be);
     }
@@ -126,8 +159,8 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Negate,
             mode: OutputMode::Ascii,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-n -oa infile outfile");
@@ -140,8 +173,8 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Brighten,
             mode: OutputMode::Ascii,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-b 24 -oa infile outfile");
@@ -161,8 +194,8 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Contrast,
             mode: OutputMode::Ascii,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-c -oa infile outfile");
@@ -175,8 +208,8 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Grayscale,
             mode: OutputMode::Ascii,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-g -oa infile outfile");
@@ -189,8 +222,8 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Smooth,
             mode: OutputMode::Ascii,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-s -oa infile outfile");
@@ -203,8 +236,8 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Sharpen,
             mode: OutputMode::Ascii,
-            infile: Box::new("infile"),
-            outfile: Box::new("outfile"),
+            infile: String::from("infile"),
+            outfile: String::from("outfile"),
         };
 
         let cmdline = to_args("-p -oa infile outfile");
