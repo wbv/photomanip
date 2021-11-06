@@ -39,20 +39,35 @@ where
 {
     let args: Vec<String> = args.collect();
 
-    if args.len() < 3 || args.len() > 5 {
-        return Err(());
-    }
+    let op = match args.len() {
+        3 => ManipOption::DoNothing,
+        4 => match args[0].as_str() {
+            "-c" => ManipOption::Contrast,
+            "-g" => ManipOption::Grayscale,
+            "-n" => ManipOption::Negate,
+            "-p" => ManipOption::Sharpen,
+            "-s" => ManipOption::Smooth,
+            _ => return Err(()),
+        },
+        5 => match args[0].as_str() {
+            "-b" => ManipOption::Brighten,
+            _ => return Err(()),
+        },
+        _ => return Err(()),
+    };
 
     return Ok(ProgOpts {
-        op: ManipOption::DoNothing,
+        op: op,
         mode: OutputMode::Ascii,
-        infile: Box::new(""),
-        outfile: Box::new("")
+        infile: Box::new("infile"),
+        outfile: Box::new("outfile")
     });
 }
 
-fn main() {
+fn main() -> Result<(), ()> {
     let opts = parse_args(env::args());
+
+    Ok(())
 }
 
 
@@ -73,23 +88,22 @@ mod tests {
         }
     }
 
+    // form an env::Args -like String iterator
+    fn to_args(cmd: &'static str) -> Vec<String> {
+        cmd.split(' ').map(|s| String::from(s)).collect()
+    }
+
     #[test]
     fn test_outbin() {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Binary,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-ob".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-ob infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
@@ -98,18 +112,12 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Ascii,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-oa infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
@@ -118,19 +126,12 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Negate,
             mode: OutputMode::Ascii,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-n".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-n -oa infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
@@ -139,56 +140,33 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Brighten,
             mode: OutputMode::Ascii,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-b".to_string(),
-            "24".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-b 24 -oa infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
     #[test]
     fn test_brighten_noarg() {
-        let cmdline = vec![
-            "-b".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-b -oa infile outfile");
         let got = parse_args(cmdline.into_iter());
-
         assert_eq!(got, Err(()));
     }
-
 
     #[test]
     fn test_contrast() {
         let should_be = ProgOpts {
             op: ManipOption::Contrast,
             mode: OutputMode::Ascii,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-c".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-c -oa infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
@@ -197,19 +175,12 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Grayscale,
             mode: OutputMode::Ascii,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-g".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-g -oa infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
@@ -218,19 +189,12 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Smooth,
             mode: OutputMode::Ascii,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-s".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-s -oa infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
@@ -239,82 +203,47 @@ mod tests {
         let should_be = ProgOpts {
             op: ManipOption::Sharpen,
             mode: OutputMode::Ascii,
-            infile: Box::new(""),
-            outfile: Box::new(""),
+            infile: Box::new("infile"),
+            outfile: Box::new("outfile"),
         };
 
-        let cmdline = vec![
-            "-p".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-p -oa infile outfile");
         let got = parse_args(cmdline.into_iter()).unwrap();
-
         assert_eq!(got, should_be);
     }
 
     #[test]
     fn test_extra_contrast_arg() {
-        let cmdline = vec![
-            "-c".to_string(),
-            "69".to_string(),
-            "-oa".to_string(),
-            "".to_string(),
-            "".to_string(),
-        ];
-
+        let cmdline = to_args("-c 69 -oa infile outfile");
         let got = parse_args(cmdline.into_iter());
-
         assert_eq!(got, Err(()));
     }
 
     #[test]
     fn test_two_args() {
-        let cmdline = vec![
-            "-c".to_string(),
-            "bad".to_string(),
-        ];
-
+        let cmdline = to_args("-c bad");
         let got = parse_args(cmdline.into_iter());
-
         assert_eq!(got, Err(()));
     }
 
     #[test]
     fn test_one_arg() {
-        let cmdline = vec![
-            "bad".to_string(),
-        ];
-
+        let cmdline = to_args("bad");
         let got = parse_args(cmdline.into_iter());
-
         assert_eq!(got, Err(()));
     }
 
     #[test]
     fn test_no_args() {
-        let cmdline = vec![];
-
+        let cmdline = to_args("");
         let got = parse_args(cmdline.into_iter());
-
         assert_eq!(got, Err(()));
     }
 
     #[test]
     fn test_six_args() {
-        let cmdline = vec![
-            "1".to_string(),
-            "2".to_string(),
-            "3".to_string(),
-            "4".to_string(),
-            "5".to_string(),
-            "6".to_string(),
-        ];
-
+        let cmdline = to_args("1 2 3 4 5 6");
         let got = parse_args(cmdline.into_iter());
-
         assert_eq!(got, Err(()));
     }
 }
