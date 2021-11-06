@@ -1,5 +1,4 @@
 use std::env;
-use std::env::ArgsOs;
 
 // these enums and structs define the runtime configuration of our program
 
@@ -34,17 +33,22 @@ struct ProgOpts<'a> {
 
 /// TODO: implement
 /// Parses the commandline variables into a program state struct
-fn parse_args<'a, I>(args: I) -> ProgOpts<'a> 
+fn parse_args<'a, I>(args: I) -> Result<ProgOpts<'a>, ()>
 where
     I: Iterator<Item = String>
 {
-    // Stub. Return a default
-    ProgOpts { 
+    let args: Vec<String> = args.collect();
+
+    if args.len() < 3 || args.len() > 5 {
+        return Err(());
+    }
+
+    return Ok(ProgOpts {
         op: ManipOption::DoNothing,
         mode: OutputMode::Ascii,
         infile: Box::new(""),
         outfile: Box::new("")
-    }
+    });
 }
 
 fn main() {
@@ -84,7 +88,7 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
@@ -104,7 +108,7 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
@@ -125,7 +129,7 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
@@ -147,13 +151,12 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
 
     #[test]
-    #[should_panic]
     fn test_brighten_noarg() {
         let cmdline = vec![
             "-b".to_string(),
@@ -163,6 +166,8 @@ mod tests {
         ];
 
         let got = parse_args(cmdline.into_iter());
+
+        assert_eq!(got, Err(()));
     }
 
 
@@ -182,7 +187,7 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
@@ -203,7 +208,7 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
@@ -224,7 +229,7 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
@@ -245,13 +250,12 @@ mod tests {
             "".to_string(),
         ];
 
-        let got = parse_args(cmdline.into_iter());
+        let got = parse_args(cmdline.into_iter()).unwrap();
 
         assert_eq!(got, should_be);
     }
 
     #[test]
-    #[should_panic]
     fn test_extra_contrast_arg() {
         let cmdline = vec![
             "-c".to_string(),
@@ -262,10 +266,11 @@ mod tests {
         ];
 
         let got = parse_args(cmdline.into_iter());
+
+        assert_eq!(got, Err(()));
     }
 
     #[test]
-    #[should_panic]
     fn test_two_args() {
         let cmdline = vec![
             "-c".to_string(),
@@ -273,23 +278,43 @@ mod tests {
         ];
 
         let got = parse_args(cmdline.into_iter());
+
+        assert_eq!(got, Err(()));
     }
 
     #[test]
-    #[should_panic]
     fn test_one_arg() {
         let cmdline = vec![
             "bad".to_string(),
         ];
 
         let got = parse_args(cmdline.into_iter());
+
+        assert_eq!(got, Err(()));
     }
 
     #[test]
-    #[should_panic]
     fn test_no_args() {
         let cmdline = vec![];
 
         let got = parse_args(cmdline.into_iter());
+
+        assert_eq!(got, Err(()));
+    }
+
+    #[test]
+    fn test_six_args() {
+        let cmdline = vec![
+            "1".to_string(),
+            "2".to_string(),
+            "3".to_string(),
+            "4".to_string(),
+            "5".to_string(),
+            "6".to_string(),
+        ];
+
+        let got = parse_args(cmdline.into_iter());
+
+        assert_eq!(got, Err(()));
     }
 }
