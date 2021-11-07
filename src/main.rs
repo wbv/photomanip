@@ -1,7 +1,8 @@
 use std::env;
 
+//
 // these enums and structs define the runtime configuration of our program
-
+//
 /// The possible manipulation options, including "Do Nothing"
 #[derive(Debug, PartialEq)]
 enum ManipOption {
