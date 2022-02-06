@@ -1,3 +1,6 @@
+use std::io;
+use std::path::Path;
+
 pub trait ImageManip {
     fn brighten(&self, amount: i32) -> ColorImage;
     fn contrast(&self) -> ColorImage;
@@ -28,8 +31,8 @@ pub enum Image {
     ColorImage(Box<ColorImage>),
 }
 
-pub fn load_from_file(path: &str) -> Option<Image> {
-    Some(Image::ColorImage(Box::new(
+pub fn load_from_file(path: &Path) -> io::Result<Image> {
+    Ok(Image::ColorImage(Box::new(
         ColorImage {
             width: 1,
             height: 1,
@@ -231,7 +234,7 @@ mod tests {
 
     #[test]
     fn open() {
-        let mut img = load_from_file("bogus").unwrap();
+        let mut img = load_from_file(Path::new("bogus")).unwrap();
 
         match img {
             Image::ColorImage(mut img) => img.rpixels[img.width - 1] = 42,
