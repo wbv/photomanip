@@ -9,6 +9,6 @@
 while :; do
 	inotifywait -e close_write,moved_to,create -rq . 
 	clear
-	cargo test
+	cargo test --verbose
 	rustdoc src/main.rs
 done
