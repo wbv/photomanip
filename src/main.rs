@@ -103,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn test_outbin() {
+    fn outbin() {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Binary,
@@ -117,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn test_outascii() {
+    fn outascii() {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Ascii,
@@ -131,7 +131,7 @@ mod tests {
     }
 
     #[test]
-    fn test_outfile() {
+    fn outfile() {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Ascii,
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn test_infile() {
+    fn infile() {
         let should_be = ProgOpts {
             op: ManipOption::DoNothing,
             mode: OutputMode::Ascii,
@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn test_negate() {
+    fn negate() {
         let should_be = ProgOpts {
             op: ManipOption::Negate,
             mode: OutputMode::Ascii,
@@ -173,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn test_brighten() {
+    fn brighten() {
         let should_be = ProgOpts {
             op: ManipOption::Brighten,
             mode: OutputMode::Ascii,
@@ -187,14 +187,14 @@ mod tests {
     }
 
     #[test]
-    fn test_brighten_noarg() {
+    fn brighten_noarg() {
         let cmdline = to_args("-b -oa infile outfile");
         let got = parse_args(cmdline.into_iter());
         assert_eq!(got, Err(()));
     }
 
     #[test]
-    fn test_contrast() {
+    fn contrast() {
         let should_be = ProgOpts {
             op: ManipOption::Contrast,
             mode: OutputMode::Ascii,
@@ -208,7 +208,7 @@ mod tests {
     }
 
     #[test]
-    fn test_grayscale() {
+    fn grayscale() {
         let should_be = ProgOpts {
             op: ManipOption::Grayscale,
             mode: OutputMode::Ascii,
@@ -222,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn test_smooth() {
+    fn smooth() {
         let should_be = ProgOpts {
             op: ManipOption::Smooth,
             mode: OutputMode::Ascii,
@@ -236,7 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sharpen() {
+    fn sharpen() {
         let should_be = ProgOpts {
             op: ManipOption::Sharpen,
             mode: OutputMode::Ascii,
@@ -250,35 +250,35 @@ mod tests {
     }
 
     #[test]
-    fn test_extra_contrast_arg() {
+    fn extra_contrast_arg() {
         let cmdline = to_args("-c 69 -oa infile outfile");
         let got = parse_args(cmdline.into_iter());
         assert_eq!(got, Err(()));
     }
 
     #[test]
-    fn test_two_args() {
+    fn two_args() {
         let cmdline = to_args("-c bad");
         let got = parse_args(cmdline.into_iter());
         assert_eq!(got, Err(()));
     }
 
     #[test]
-    fn test_one_arg() {
+    fn one_arg() {
         let cmdline = to_args("bad");
         let got = parse_args(cmdline.into_iter());
         assert_eq!(got, Err(()));
     }
 
     #[test]
-    fn test_no_args() {
+    fn no_args() {
         let cmdline = to_args("");
         let got = parse_args(cmdline.into_iter());
         assert_eq!(got, Err(()));
     }
 
     #[test]
-    fn test_six_args() {
+    fn six_args() {
         let cmdline = to_args("1 2 3 4 5 6");
         let got = parse_args(cmdline.into_iter());
         assert_eq!(got, Err(()));
