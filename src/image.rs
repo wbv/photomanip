@@ -31,127 +31,166 @@ pub struct GrayImage {
 
 #[derive(Debug)]
 pub enum Image {
-    GrayImage(Box<GrayImage>),
-    ColorImage(Box<ColorImage>),
+    Grayscale(Box<GrayImage>),
+    Color(Box<ColorImage>),
 }
 
+
+// Parsing rules:
+//
+// after the first two characters "Px", there's
+// 1) Whitespace
+// 2) Width (ASCII Decimal)
+// 3) Whitespace
+// 4) Height (ASCII Decimal)
+// 5) Whitespace
+// 6) Maxval (ASCII Decimal, must be < 65536)
+// 7) A single whitespace
+// 8) RASTER DATA
+//
+// but any line (something followed by '\n') that begins with a '#' is a comment and gets
+// ignored until the next newline.
 pub fn load_from_file(path: &str) -> io::Result<Image> {
     let mut data = Vec::<u8>::new();
     let mut file = File::open(path)?;
-    let n = file.read_to_end(&mut data)?;
+    let _ = file.read_to_end(&mut data)?;
 
     // interpret the kind of PPM from the magic sequence
-    let (grayscale, ascii) = 
+    let (grayscale, ascii) =
         match std::str::from_utf8(&data[0..2]) {
-           Ok("P6") => { (false, false) },
-           Ok("P5") => { (true,  false) },
-           Ok("P3") => { (false, true)  },
-           Ok("P2") => { (true,  true)  },
-           _ => {
-               eprintln!("Not a valid PPM/PGM file: '{}'", path);
-               return Err(io::Error::new(
-                   io::ErrorKind::InvalidData, "Not a PPM/PGM file"
-               ))
-           }
+            Ok("P6") => { (false, false) },
+            Ok("P5") => { (true,  false) },
+            Ok("P3") => { (false, true)  },
+            Ok("P2") => { (true,  true)  },
+            _ => {
+                eprintln!("Not a valid PPM/PGM file: '{}'", path);
+                return Err(
+                    io::Error::new(
+                        io::ErrorKind::InvalidData, "Not a PPM/PGM file"
+                    )
+                )
+            }
         };
 
-    // scan through the file header following the magic seqence, byte at a time
-    // `scanner` is our index into data as we scan
-    let mut scanner: usize = 2;
+    // Finite State Machine for parsing
+    enum State {
+        Newline,
+        Whitespace,
+        Comment,
+        Value,
+    }
 
-    // skip whitespace following the magic sequence
-    for i in scanner..data.len() {
-        if data[i].is_ascii_whitespace() {
-            scanner = i+1;
-            break;
+    // iterator over the data
+    let mut scanner = data.iter().enumerate().skip(2);
+
+    // stores values returned
+    let mut params = Vec::<usize>::with_capacity(4);
+
+    // tracks where to start reading a value as a string
+    let mut param_start: usize = 2;
+
+    // trakcs the parser state
+    let mut state = State::Newline;
+
+    while params.len() < 4 {
+        match scanner.next() {
+            Some((i, &ch)) => {
+                match state {
+                    State::Newline => {
+                        if ch == b'#' {
+                            state = State::Comment;
+                        } else if ch == b'\n' {
+                            state = State::Newline;
+                        } else if ch.is_ascii_whitespace() {
+                            state = State::Whitespace;
+                        } else {
+                            // this character is the start of a numeric parameter
+                            param_start = i;
+                            state = State::Value;
+                        }
+                    },
+                    State::Comment => {
+                        if ch == b'\n' {
+                            state = State::Newline;
+                        }
+                    },
+                    State::Whitespace => {
+                        if ch == b'\n' {
+                            state = State::Newline;
+                        }
+                        else if !ch.is_ascii_whitespace() {
+                            // this character is the start of a numeric parameter
+                            param_start = i;
+                            state = State::Value;
+                        }
+                    }
+                    State::Value => {
+                        if ch.is_ascii_whitespace() {
+                            // this character is the non-inclusive end of a numeric parameter, so
+                            // start parsing it
+                            let value_string = std::str::from_utf8(&data[param_start..i]);
+                            match value_string {
+                                Ok(value) => {
+                                    match value.parse::<usize>() {
+                                        Ok(v) => {
+                                            // save the succesffully interpreted value
+                                            params.push(v);
+
+                                            // also save our index if we've found width, length,
+                                            // maxval
+                                            if params.len() == 3 {
+                                                params.push(i);
+                                            }
+                                        }
+                                        Err(_) => {
+                                            eprintln!("Invalid image param");
+                                            return Err(
+                                                io::Error::new(
+                                                    io::ErrorKind::InvalidData, "Bad image param"
+                                                    )
+                                                )
+                                        }
+                                    }
+                                },
+                                Err(_) => {
+                                    eprintln!("Invalid image param (non-unicode data)");
+                                    return Err(
+                                        io::Error::new(
+                                            io::ErrorKind::InvalidData, "Bad image param"
+                                        )
+                                    )
+                                },
+                            }
+
+                            // advance state from here based on kind of whitespace
+                            if ch == b'\n' {
+                                state = State::Newline;
+                            } else {
+                                state = State::Whitespace;
+                            }
+                        }
+                    }
+                }
+            }
+            None => {
+               eprintln!("Reached end of file before finding all image parameters (found {:?})", params);
+               return Err(io::Error::new(
+                   io::ErrorKind::InvalidData, "Not a valid PPM/PGM file"
+               ))
+            }
         }
     }
 
-    // check for line comment, read 'til EOL
-    if data[scanner] == b'#' {
-        while data[scanner] != b'\n' {
-            scanner = scanner + 1;
-        }
-    }
-
-    // skip until width string
-    for i in scanner..data.len() {
-        if data[i].is_ascii_whitespace() {
-            scanner = i+1;
-            break;
-        }
-    }
-
-    // form the width from the next non-whitespace characters
-    let mut width_str = String::new();
-    for i in scanner..data.len() {
-        if !data[i].is_ascii_whitespace() {
-            width_str.push(data[i].clone() as char)
-        } else {
-            break;
-        }
-    }
-    let width = match width_str.parse::<usize>() {
-        Ok(val) => val,
-        Err(_) => {
-            eprintln!("Invalid ascii width found: '{}'", width_str);
-            eprintln!("at postion {}", scanner);
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData, "Invalid width parameter"
-            ))
-        }
-    };
-
-    // skip until width string
-    for i in scanner..data.len() {
-        if data[i].is_ascii_whitespace() {
-            scanner = i+1;
-            break;
-        }
-    }
-
-    // form the height from the next non-whitespace characters
-    let mut height_str = String::new();
-    for i in scanner..data.len() {
-        if !data[i].is_ascii_whitespace() {
-            height_str.push(data[i].clone() as char)
-        } else {
-            break;
-        }
-    }
-    let height = match height_str.parse::<usize>() {
-        Ok(val) => val,
-        Err(_) => {
-            eprintln!("Invalid ascii height found: '{}'", height_str);
-            eprintln!("at postion {}", scanner);
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData, "Invalid height parameter"
-            ))
-        }
-    };
-
-    // form the maxval from the next non-whitespace characters
-    let mut maxval_str = String::new();
-    for i in scanner..data.len() {
-        if !data[i].is_ascii_whitespace() {
-            maxval_str.push(data[i].clone() as char)
-        } else {
-            break;
-        }
-    }
-    let maxval = match maxval_str.parse::<usize>() {
-        Ok(val) => val,
-        Err(_) => {
-            eprintln!("Invalid ascii maxval found: '{}'", maxval_str);
-            eprintln!("at postion {}", scanner);
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData, "Invalid height parameter"
-            ))
-        }
-    };
+    let (width, height, maxval) = (params[0], params[1], params[2]);
 
     if grayscale {
-        Ok(Image::GrayImage(Box::new(
+        if ascii {
+            println!("Ascii grayscale image");
+        } else {
+            println!("Raw grayscale image");
+        }
+
+        Ok(Image::Grayscale(Box::new(
             GrayImage {
                 width: width,
                 height: height,
@@ -162,7 +201,13 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
     }
 
     else {
-        Ok(Image::ColorImage(Box::new(
+        if ascii {
+            println!("Ascii color image");
+        } else {
+            println!("Raw color image");
+        }
+
+        Ok(Image::Color(Box::new(
             ColorImage {
                 width: width,
                 height: height,
@@ -178,139 +223,43 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
 
 impl ImageManip for ColorImage {
     fn brighten(&self, amount: i32) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn contrast(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn grayscale(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn negate(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn sharpen(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn smooth(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
 }
 
 impl ImageManip for GrayImage {
     fn brighten(&self, amount: i32) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn contrast(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn grayscale(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn negate(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn sharpen(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
     fn smooth(&self) -> ColorImage {
-        // TODO: STUB
-        return ColorImage {
-            width: 1,
-            height: 1,
-            maxval: 1,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        }
+        unimplemented!()
     }
 }
 
@@ -375,7 +324,7 @@ mod tests {
 
     #[test]
     fn open_valid_image_files() {
-        // test all 4 variants of 
+        // test all 4 variants of image
         let test_images = vec![
             "color_ascii_baldy.ppm",
             "gray_ascii_baldy.pgm",
@@ -386,6 +335,7 @@ mod tests {
             let img_path = img_folder() + i;
             let good_img = load_from_file(&img_path);
             assert!(good_img.is_ok());
+            println!("{:?}", good_img.unwrap());
         }
     }
 
