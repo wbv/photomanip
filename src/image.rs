@@ -108,12 +108,12 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
                             param_start = i;
                             state = State::Value;
                         }
-                    },
+                    }
                     State::Comment => {
                         if ch == b'\n' {
                             state = State::Newline;
                         }
-                    },
+                    }
                     State::Whitespace => {
                         if ch == b'\n' {
                             state = State::Newline;
@@ -262,6 +262,8 @@ impl ImageManip for GrayImage {
         unimplemented!()
     }
 }
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // unit tests /////////////////////////////////////////////////////////////////
