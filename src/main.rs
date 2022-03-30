@@ -73,7 +73,7 @@ where
 }
 
 fn main() -> Result<(), ()> {
-    let opts = parse_args(env::args());
+    let _ = parse_args(env::args());
 
     Ok(())
 }
