@@ -15,7 +15,7 @@ they are the second line of the file, even though regular PPM/PGM files may
 contain comments anywhere between the magic number and the _raster_.
 
 ### PPM - Color Images
-- Starts with `P3` or `P6` and a newline (`\n`, `\r`, or `\n\r`)
+- Starts with `P3` or `P6` and a newline (`\n`, `\r`, or both)
 - Next line is a comment if-and-only-if it starts with `#`
 - (Comment lines are ignored)
 - Next line is width and height of an image in ascii (e.g. `3 2` means width=3
