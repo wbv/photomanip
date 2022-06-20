@@ -9,10 +9,13 @@ characters interpreted as ASCII.
 
 
 
-## Image Types (for this exercise)
+## Image Types
+Note that we don't include PBM files, and we only consider comments valid if
+they are the second line of the file, even though regular PPM/PGM files may
+contain comments anywhere between the magic number and the _raster_.
 
 ### PPM - Color Images
-- Starts with `P3` or `P6` and a newline (`\n`)
+- Starts with `P3` or `P6` and a newline (`\n`, `\r`, or `\n\r`)
 - Next line is a comment if-and-only-if it starts with `#`
 - (Comment lines are ignored)
 - Next line is width and height of an image in ascii (e.g. `3 2` means width=3
@@ -21,7 +24,7 @@ characters interpreted as ASCII.
   followed by a single whitespace character (one byte)
 - Maximum value will always be less than or equal to `255`
 - (0 is our implicit lower bound for a pixel)
-- The rest of the file is data
+- The rest of the file is data (also called the _raster_)
   - `P3` - expect ascii numbers representing data, separated by whitespaces
     - Each whitespace-separated ascii-represented decimal number is a value
   - `P6` - expect binary values, one byte after another

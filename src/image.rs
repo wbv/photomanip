@@ -11,7 +11,7 @@ pub trait ImageManip {
     fn smooth(&self) -> ColorImage;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColorImage {
     width: usize,
     height: usize,
@@ -21,7 +21,7 @@ pub struct ColorImage {
     bpixels: Vec<u16>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GrayImage {
     width: usize,
     height: usize,
@@ -48,7 +48,7 @@ pub enum Image {
 // 7) A single whitespace
 // 8) RASTER DATA
 //
-// but any line (something followed by '\n') that begins with a '#' is a comment and gets
+// but any line (something followed by '\n' or '\r') that begins with a '#' is a comment and gets
 // ignored until the next newline.
 pub fn load_from_file(path: &str) -> io::Result<Image> {
     let mut data = Vec::<u8>::new();
@@ -86,10 +86,10 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
     // stores values returned
     let mut params = Vec::<usize>::with_capacity(4);
 
-    // tracks where to start reading a value as a string
+    // index into data where we start interpreting a value as a string
     let mut param_start: usize = 2;
 
-    // trakcs the parser state
+    // the FSM parser's state
     let mut state = State::Newline;
 
     while params.len() < 4 {
@@ -99,7 +99,7 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
                     State::Newline => {
                         if ch == b'#' {
                             state = State::Comment;
-                        } else if ch == b'\n' {
+                        } else if ch == b'\n' || ch == b'\r' {
                             state = State::Newline;
                         } else if ch.is_ascii_whitespace() {
                             state = State::Whitespace;
@@ -110,12 +110,12 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
                         }
                     }
                     State::Comment => {
-                        if ch == b'\n' {
+                        if ch == b'\n' || ch == b'\r' {
                             state = State::Newline;
                         }
                     }
                     State::Whitespace => {
-                        if ch == b'\n' {
+                        if ch == b'\n' || ch == b'\r' {
                             state = State::Newline;
                         }
                         else if !ch.is_ascii_whitespace() {
@@ -163,7 +163,7 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
                             }
 
                             // advance state from here based on kind of whitespace
-                            if ch == b'\n' {
+                            if ch == b'\n' || ch == b'\r' {
                                 state = State::Newline;
                             } else {
                                 state = State::Whitespace;
@@ -272,6 +272,10 @@ impl ImageManip for GrayImage {
 mod tests {
     use super::*;
 
+    ////////////////////////////////
+    // Helper functions for tests //
+    ////////////////////////////////
+
     fn img_folder() -> String {
         env!("CARGO_MANIFEST_DIR").to_owned() + "/img/"
     }
@@ -299,6 +303,25 @@ mod tests {
             }
         )
     }
+
+    // Determine if images are equal 
+    impl PartialEq for Image {
+        fn eq(&self, other: &Self) -> bool {
+            match (self, other) {
+                (Image::Grayscale(a), Image::Grayscale(b)) => {
+                    a == b
+                }
+                (Image::Color(a), Image::Color(b)) => {
+                    a == b
+                }
+                _ => false
+            }
+        }
+    }
+
+    //////////////////
+    // actual tests //
+    //////////////////
 
     #[test]
     fn make_image() {
@@ -348,4 +371,17 @@ mod tests {
         assert!(not_image.is_err());
     }
 
+    #[test]
+    fn handle_mac_line_endings() {
+        let cr_img = load_from_file(&(img_folder() + "ascii_cr_wisdom.ppm"));
+        let unix_img = load_from_file(&(img_folder() + "ascii_wisdom.ppm"));
+        assert_eq!(cr_img.unwrap(), unix_img.unwrap());
+    }
+
+    #[test]
+    fn handle_windows_line_endings() {
+        let crlf_img = load_from_file(&(img_folder() + "ascii_crlf_wisdom.ppm"));
+        let unix_img = load_from_file(&(img_folder() + "ascii_wisdom.ppm"));
+        assert_eq!(crlf_img.unwrap(), unix_img.unwrap());
+    }
 }
