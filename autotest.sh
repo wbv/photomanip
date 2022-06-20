@@ -6,8 +6,16 @@
 
 # NOTE: requires inotifywait (try `apt install inotify-tools` on ubuntu/debian)
 
+INOTIFYWAIT="$(command -pv inotifywait)"
+
+if [ "$INOTIFYWAIT" = "" ]; then
+	echo "E: command 'inotifywait' not found." >&2
+	echo " (Note: try \`apt install inotify-tools\`)" >&2
+	exit 127 # command not found
+fi
+
 while :; do
-	inotifywait -e close_write,moved_to,create -rq . 
+	"$INOTIFYWAIT" -e close_write,moved_to,create -rq .
 	clear
 	cargo test --verbose
 	rustdoc src/main.rs
