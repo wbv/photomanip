@@ -10,7 +10,7 @@ mod image;
 enum ManipOption {
     DoNothing,
     Negate,
-    Brighten,
+    Brighten(usize),
     Sharpen,
     Smooth,
     Grayscale,
@@ -52,7 +52,7 @@ where
             _ => return Err(()),
         },
         5 => match args[0].as_str() {
-            "-b" => ManipOption::Brighten,
+            "-b" => ManipOption::Brighten(usize::from_str_radix(&args[1], 10).unwrap()),
             _ => return Err(()),
         },
         _ => return Err(()),
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn brighten() {
         let should_be = ProgOpts {
-            op: ManipOption::Brighten,
+            op: ManipOption::Brighten(24),
             mode: OutputMode::Ascii,
             infile: String::from("infile"),
             outfile: String::from("outfile"),
