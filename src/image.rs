@@ -1,19 +1,10 @@
 use std::io;
+
 use std::io::Read;
 use std::fs::File;
 
 #[cfg(test)]
 mod tests;
-
-pub trait ImageManip {
-    type Depth;
-    fn brighten(&self, amount: i32) -> ColorImage<Self::Depth>;
-    fn contrast(&self) -> ColorImage<Self::Depth>;
-    fn grayscale(&self) -> ColorImage<Self::Depth>;
-    fn negate(&self) -> ColorImage<Self::Depth>;
-    fn sharpen(&self) -> ColorImage<Self::Depth>;
-    fn smooth(&self) -> ColorImage<Self::Depth>;
-}
 
 #[cfg_attr(test, derive(Debug, Clone, PartialEq))]
 pub struct ColorImage<Depth> {
@@ -226,6 +217,21 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
     }
 }
 
+
+
+// TODO: extract raster function
+
+
+
+pub trait ImageManip {
+    type Depth;
+    fn brighten(&self, amount: i32) -> ColorImage<Self::Depth>;
+    fn contrast(&self) -> ColorImage<Self::Depth>;
+    fn grayscale(&self) -> ColorImage<Self::Depth>;
+    fn negate(&self) -> ColorImage<Self::Depth>;
+    fn sharpen(&self) -> ColorImage<Self::Depth>;
+    fn smooth(&self) -> ColorImage<Self::Depth>;
+}
 
 impl ImageManip for ColorImage<u8> {
     type Depth = u8;
