@@ -6,36 +6,39 @@ use std::fs::File;
 mod tests;
 
 pub trait ImageManip {
-    fn brighten(&self, amount: i32) -> ColorImage;
-    fn contrast(&self) -> ColorImage;
-    fn grayscale(&self) -> ColorImage;
-    fn negate(&self) -> ColorImage;
-    fn sharpen(&self) -> ColorImage;
-    fn smooth(&self) -> ColorImage;
+    type Depth;
+    fn brighten(&self, amount: i32) -> ColorImage<Self::Depth>;
+    fn contrast(&self) -> ColorImage<Self::Depth>;
+    fn grayscale(&self) -> ColorImage<Self::Depth>;
+    fn negate(&self) -> ColorImage<Self::Depth>;
+    fn sharpen(&self) -> ColorImage<Self::Depth>;
+    fn smooth(&self) -> ColorImage<Self::Depth>;
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ColorImage {
+#[cfg_attr(test, derive(Debug, Clone, PartialEq))]
+pub struct ColorImage<Depth> {
     width: usize,
     height: usize,
     maxval: usize,
-    rpixels: Vec<u16>,
-    gpixels: Vec<u16>,
-    bpixels: Vec<u16>,
+    rpixels: Vec<Depth>,
+    gpixels: Vec<Depth>,
+    bpixels: Vec<Depth>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct GrayImage {
+#[cfg_attr(test, derive(Debug, Clone, PartialEq))]
+pub struct GrayImage<Depth> {
     width: usize,
     height: usize,
     maxval: usize,
-    pixels: Vec<u16>,
+    pixels: Vec<Depth>,
 }
 
-#[derive(Debug)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub enum Image {
-    Grayscale(Box<GrayImage>),
-    Color(Box<ColorImage>),
+    Grayscale8(Box<GrayImage<u8>>),
+    Grayscale16(Box<GrayImage<u16>>),
+    Color8(Box<ColorImage<u8>>),
+    Color16(Box<ColorImage<u16>>),
 }
 
 
@@ -193,7 +196,7 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
             println!("Raw grayscale image");
         }
 
-        Ok(Image::Grayscale(Box::new(
+        Ok(Image::Grayscale8(Box::new(
             GrayImage {
                 width: width,
                 height: height,
@@ -210,7 +213,7 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
             println!("Raw color image");
         }
 
-        Ok(Image::Color(Box::new(
+        Ok(Image::Color8(Box::new(
             ColorImage {
                 width: width,
                 height: height,
@@ -224,44 +227,90 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
 }
 
 
-impl ImageManip for ColorImage {
-    fn brighten(&self, amount: i32) -> ColorImage {
+impl ImageManip for ColorImage<u8> {
+    type Depth = u8;
+    fn brighten(&self, amount: i32) -> ColorImage<u8> {
         unimplemented!()
     }
-    fn contrast(&self) -> ColorImage {
+    fn contrast(&self) -> ColorImage<u8> {
         unimplemented!()
     }
-    fn grayscale(&self) -> ColorImage {
+    fn grayscale(&self) -> ColorImage<u8> {
         unimplemented!()
     }
-    fn negate(&self) -> ColorImage {
+    fn negate(&self) -> ColorImage<u8> {
         unimplemented!()
     }
-    fn sharpen(&self) -> ColorImage {
+    fn sharpen(&self) -> ColorImage<u8> {
         unimplemented!()
     }
-    fn smooth(&self) -> ColorImage {
+    fn smooth(&self) -> ColorImage<u8> {
         unimplemented!()
     }
 }
 
-impl ImageManip for GrayImage {
-    fn brighten(&self, amount: i32) -> ColorImage {
+impl ImageManip for ColorImage<u16> {
+    type Depth = u16;
+    fn brighten(&self, amount: i32) -> ColorImage<u16> {
         unimplemented!()
     }
-    fn contrast(&self) -> ColorImage {
+    fn contrast(&self) -> ColorImage<u16> {
         unimplemented!()
     }
-    fn grayscale(&self) -> ColorImage {
+    fn grayscale(&self) -> ColorImage<u16> {
         unimplemented!()
     }
-    fn negate(&self) -> ColorImage {
+    fn negate(&self) -> ColorImage<u16> {
         unimplemented!()
     }
-    fn sharpen(&self) -> ColorImage {
+    fn sharpen(&self) -> ColorImage<u16> {
         unimplemented!()
     }
-    fn smooth(&self) -> ColorImage {
+    fn smooth(&self) -> ColorImage<u16> {
+        unimplemented!()
+    }
+}
+
+impl ImageManip for GrayImage<u8> {
+    type Depth = u8;
+    fn brighten(&self, amount: i32) -> ColorImage<u8> {
+        unimplemented!()
+    }
+    fn contrast(&self) -> ColorImage<u8> {
+        unimplemented!()
+    }
+    fn grayscale(&self) -> ColorImage<u8> {
+        unimplemented!()
+    }
+    fn negate(&self) -> ColorImage<u8> {
+        unimplemented!()
+    }
+    fn sharpen(&self) -> ColorImage<u8> {
+        unimplemented!()
+    }
+    fn smooth(&self) -> ColorImage<u8> {
+        unimplemented!()
+    }
+}
+
+impl ImageManip for GrayImage<u16> {
+    type Depth = u16;
+    fn brighten(&self, amount: i32) -> ColorImage<u16> {
+        unimplemented!()
+    }
+    fn contrast(&self) -> ColorImage<u16> {
+        unimplemented!()
+    }
+    fn grayscale(&self) -> ColorImage<u16> {
+        unimplemented!()
+    }
+    fn negate(&self) -> ColorImage<u16> {
+        unimplemented!()
+    }
+    fn sharpen(&self) -> ColorImage<u16> {
+        unimplemented!()
+    }
+    fn smooth(&self) -> ColorImage<u16> {
         unimplemented!()
     }
 }

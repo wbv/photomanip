@@ -1,7 +1,7 @@
 /////////////////////////////
 // unit tests for image.rs //
 /////////////////////////////
-use super::{ColorImage, GrayImage, Image};
+use super::{ColorImage, GrayImage};
 use super::load_from_file;
 
 ////////////////////////////////
@@ -12,18 +12,18 @@ fn img_folder() -> String {
     env!("CARGO_MANIFEST_DIR").to_owned() + "/img/"
 }
 
-fn make_gray_image() -> Box<GrayImage> {
+fn make_gray_image() -> Box<GrayImage<u8>> {
     Box::new(
         GrayImage {
             width: 3,
             height: 4,
-            maxval: 255,
+            maxval: 15,
             pixels: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
         }
     )
 }
 
-fn make_color_image() -> Box<ColorImage> {
+fn make_color_image() -> Box<ColorImage<u8>> {
     Box::new(
         ColorImage {
             width: 3,
@@ -36,20 +36,6 @@ fn make_color_image() -> Box<ColorImage> {
     )
 }
 
-// Determine if images are equal
-impl PartialEq for Image {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Image::Grayscale(a), Image::Grayscale(b)) => {
-                a == b
-            }
-            (Image::Color(a), Image::Color(b)) => {
-                a == b
-            }
-            _ => false
-        }
-    }
-}
 
 //////////////////
 // actual tests //
