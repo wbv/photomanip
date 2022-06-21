@@ -217,11 +217,71 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
     }
 }
 
+///////////////////////////////
+// Raster Extraction Methods //
+///////////////////////////////
+
+// TODO:
+//   implement FromRaster stubs
+//   (maybe) change FromRaster to TryInto<T>
+trait FromRaster {
+    /// Trait for an Image to form itself given its header parameters
+    /// and a `&[u8]` containing its raster
+    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> Self;
+}
+
+impl FromRaster for ColorImage<u8> {
+    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> ColorImage<u8> {
+        ColorImage {
+            width: w,
+            height: h,
+            maxval: m,
+            rpixels: vec![0],
+            gpixels: vec![0],
+            bpixels: vec![0]
+        }
+    }
+}
+
+impl FromRaster for ColorImage<u16> {
+    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> ColorImage<u16> {
+        ColorImage {
+            width: w,
+            height: h,
+            maxval: m,
+            rpixels: vec![0],
+            gpixels: vec![0],
+            bpixels: vec![0]
+        }
+    }
+}
+
+impl FromRaster for GrayImage<u8> {
+    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> GrayImage<u8> {
+        GrayImage {
+            width: w,
+            height: h,
+            maxval: m,
+            pixels: vec![0]
+        }
+    }
+}
+
+impl FromRaster for GrayImage<u16> {
+    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> GrayImage<u16> {
+        GrayImage {
+            width: w,
+            height: h,
+            maxval: m,
+            pixels: vec![0]
+        }
+    }
+}
 
 
-// TODO: extract raster function
-
-
+////////////////////////////////
+// Image Manipulation Methods //
+////////////////////////////////
 
 pub trait ImageManip {
     type Depth;

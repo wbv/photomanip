@@ -36,6 +36,15 @@ fn make_color_image() -> Box<ColorImage<u8>> {
     )
 }
 
+// TODO:
+//   compare equivalent gray images with different maxvals
+//   compare equivalent color images with different maxvals
+//   compare equivalent gray and color images
+//
+//impl PartialEq for ColorImage<u8> {
+//    fn eq(&self, other: &Self) -> bool { true }
+//}
+
 
 //////////////////
 // actual tests //
@@ -101,4 +110,32 @@ fn handle_windows_line_endings() {
     let crlf_img = load_from_file(&(img_folder() + "ascii_crlf_wisdom.ppm"));
     let unix_img = load_from_file(&(img_folder() + "ascii_wisdom.ppm"));
     assert_eq!(crlf_img.unwrap(), unix_img.unwrap());
+}
+
+#[test]
+fn raw_and_ascii_pgms_equal() {
+    let raw_img   = load_from_file(&(img_folder() + "feep_raw.pgm")).unwrap();
+    let ascii_img = load_from_file(&(img_folder() + "feep.pgm"    )).unwrap();
+    assert_eq!(raw_img, ascii_img);
+}
+
+#[test]
+fn raw_and_ascii_ppms_equal() {
+    let raw_img   = load_from_file(&(img_folder() + "feep_raw.ppm")).unwrap();
+    let ascii_img = load_from_file(&(img_folder() + "feep.ppm"    )).unwrap();
+    assert_eq!(raw_img, ascii_img);
+}
+
+#[test]
+fn different_maxval_equal_pgms() {
+    let my_img   = load_from_file(&(img_folder() + "feep_raw.pgm"     )).unwrap();
+    let gimp_img = load_from_file(&(img_folder() + "feep_raw_gimp.pgm")).unwrap();
+    assert_eq!(my_img, gimp_img);
+}
+
+#[test]
+fn different_maxval_equal_ppms() {
+    let my_img   = load_from_file(&(img_folder() + "feep_raw.ppm"     )).unwrap();
+    let gimp_img = load_from_file(&(img_folder() + "feep_raw_gimp.ppm")).unwrap();
+    assert_eq!(my_img, gimp_img);
 }
