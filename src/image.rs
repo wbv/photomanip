@@ -3,6 +3,8 @@ use std::io;
 use std::io::Read;
 use std::fs::File;
 
+use std::convert::{TryFrom, TryInto};
+
 #[cfg(test)]
 mod tests;
 
@@ -33,9 +35,58 @@ pub enum Image {
 }
 
 
+enum ImageKind {
+    Grayscale,
+    Color
+}
+
+enum RasterKind {
+    Ascii,
+    Raw
+}
+
+struct ImageHeader<'a> {
+    is_color: bool,
+    is_ascii_raster: bool,
+    width: usize,
+    height: usize,
+    maxval: usize,
+    raster: &'a [u8]
+}
+
+
+/// Tries to construct an [`Image`] from the file located at `path`.
+pub fn load_from_file(path: &str) -> io::Result<Image> {
+    let mut data = Vec::<u8>::new();
+    let mut file = File::open(path)?;
+    let _ = file.read_to_end(&mut data)?;
+
+    // interpret the kind of PPM from the magic sequence
+    let hdr = get_image_header(&data)?;
+
+    match (hdr.is_color, hdr.maxval > 255) {
+        (true, true) => {
+            let img: ColorImage<u16> = hdr.try_into()?;
+            Ok(Image::Color16(Box::new(img)))
+        }
+        (true, false) => {
+            let img: ColorImage<u8> = hdr.try_into()?;
+            Ok(Image::Color8(Box::new(img)))
+        }
+        (false, true) => {
+            let img: GrayImage<u16> = hdr.try_into()?;
+            Ok(Image::Grayscale16(Box::new(img)))
+        }
+        (false, false) => {
+            let img: GrayImage<u8> = hdr.try_into()?;
+            Ok(Image::Grayscale8(Box::new(img)))
+        }
+    }
+}
+
 // Parsing rules:
 //
-// after the first two characters "Px", there's
+// after the first two characters "P#", there's
 // 1) Whitespace
 // 2) Width (ASCII Decimal)
 // 3) Whitespace
@@ -47,27 +98,10 @@ pub enum Image {
 //
 // but any line (something followed by '\n' or '\r') that begins with a '#' is a comment and gets
 // ignored until the next newline.
-pub fn load_from_file(path: &str) -> io::Result<Image> {
-    let mut data = Vec::<u8>::new();
-    let mut file = File::open(path)?;
-    let _ = file.read_to_end(&mut data)?;
+fn get_image_header(filedata: &[u8]) -> io::Result<ImageHeader> {
 
-    // interpret the kind of PPM from the magic sequence
-    let (grayscale, ascii) =
-        match std::str::from_utf8(&data[0..2]) {
-            Ok("P6") => { (false, false) },
-            Ok("P5") => { (true,  false) },
-            Ok("P3") => { (false, true)  },
-            Ok("P2") => { (true,  true)  },
-            _ => {
-                eprintln!("Not a valid PPM/PGM file: '{}'", path);
-                return Err(
-                    io::Error::new(
-                        io::ErrorKind::InvalidData, "Not a PPM/PGM file"
-                    )
-                )
-            }
-        };
+    // first determine magic sequence
+    let (color_kind, raster_kind) = get_kind(filedata)?;
 
     // Finite State Machine for parsing
     enum State {
@@ -78,7 +112,7 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
     }
 
     // iterator over the data
-    let mut scanner = data.iter().enumerate().skip(2);
+    let mut scanner = filedata.iter().enumerate().skip(2);
 
     // stores values returned
     let mut params = Vec::<usize>::with_capacity(4);
@@ -125,7 +159,7 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
                         if ch.is_ascii_whitespace() {
                             // this character is the non-inclusive end of a numeric parameter, so
                             // start parsing it
-                            let value_string = std::str::from_utf8(&data[param_start..i]);
+                            let value_string = std::str::from_utf8(&filedata[param_start..i]);
                             match value_string {
                                 Ok(value) => {
                                     match value.parse::<usize>() {
@@ -140,22 +174,18 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
                                             }
                                         }
                                         Err(_) => {
-                                            eprintln!("Invalid image param");
-                                            return Err(
-                                                io::Error::new(
-                                                    io::ErrorKind::InvalidData, "Bad image param"
-                                                    )
-                                                )
+                                            return Err(io::Error::new(
+                                                io::ErrorKind::InvalidData,
+                                                "Invalid image param"
+                                            ));
                                         }
                                     }
                                 },
                                 Err(_) => {
-                                    eprintln!("Invalid image param (non-unicode data)");
-                                    return Err(
-                                        io::Error::new(
-                                            io::ErrorKind::InvalidData, "Bad image param"
-                                        )
-                                    )
+                                    return Err(io::Error::new(
+                                        io::ErrorKind::InvalidData,
+                                        "Invalid image param (non-unicode data)"
+                                    ));
                                 },
                             }
 
@@ -170,50 +200,53 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
                 }
             }
             None => {
-               eprintln!("Reached end of file before finding all image parameters (found {:?})", params);
                return Err(io::Error::new(
-                   io::ErrorKind::InvalidData, "Not a valid PPM/PGM file"
-               ))
+                   io::ErrorKind::InvalidData,
+                   format!(
+                       "Reached end of file before finding all image parameters (found {:?})",
+                       params
+                   )
+               ));
             }
         }
     }
 
-    let (width, height, maxval) = (params[0], params[1], params[2]);
+    Ok(ImageHeader {
+        is_color:
+            match color_kind {
+                ImageKind::Color => true,
+                ImageKind::Grayscale => false
+            },
+        is_ascii_raster:
+            match raster_kind {
+                RasterKind::Ascii => true,
+                RasterKind::Raw => false
+            },
+        width: params[0],
+        height: params[1],
+        maxval: params[2],
+        raster: &filedata[params[3]..]
+    })
+}
 
-    if grayscale {
-        if ascii {
-            println!("Ascii grayscale image");
-        } else {
-            println!("Raw grayscale image");
+fn get_kind(filedata: &[u8]) -> io::Result<(ImageKind, RasterKind)> {
+    match &filedata[0..2] {
+        b"P6" => Ok((ImageKind::Grayscale, RasterKind::Ascii)),
+        b"P5" => Ok((ImageKind::Color,     RasterKind::Ascii)),
+        b"P3" => Ok((ImageKind::Grayscale, RasterKind::Raw)),
+        b"P2" => Ok((ImageKind::Color,     RasterKind::Raw)),
+        [one, two] => {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "Not a PPM/PGM file (found magic sequence {:?})",
+                    [one, two]
+                )
+            ))
+        },
+        _ => {
+            Err(io::Error::new(io::ErrorKind::InvalidInput, "Not a PPM/PGM file"))
         }
-
-        Ok(Image::Grayscale8(Box::new(
-            GrayImage {
-                width: width,
-                height: height,
-                maxval: maxval,
-                pixels: vec![0],
-            }
-        )))
-    }
-
-    else {
-        if ascii {
-            println!("Ascii color image");
-        } else {
-            println!("Raw color image");
-        }
-
-        Ok(Image::Color8(Box::new(
-            ColorImage {
-                width: width,
-                height: height,
-                maxval: maxval,
-                rpixels: vec![0],
-                gpixels: vec![0],
-                bpixels: vec![0]
-            }
-        )))
     }
 }
 
@@ -221,60 +254,55 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
 // Raster Extraction Methods //
 ///////////////////////////////
 
-// TODO:
-//   implement FromRaster stubs
-//   (maybe) change FromRaster to TryInto<T>
-trait FromRaster {
-    /// Trait for an Image to form itself given its header parameters
-    /// and a `&[u8]` containing its raster
-    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> Self;
-}
-
-impl FromRaster for ColorImage<u8> {
-    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> ColorImage<u8> {
-        ColorImage {
-            width: w,
-            height: h,
-            maxval: m,
+impl TryFrom<ImageHeader<'_>> for ColorImage<u8> {
+    type Error = io::Error;
+    fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
+        Ok(Self {
+            width: hdr.width,
+            height: hdr.height,
+            maxval: hdr.maxval,
             rpixels: vec![0],
             gpixels: vec![0],
             bpixels: vec![0]
-        }
+        })
     }
 }
 
-impl FromRaster for ColorImage<u16> {
-    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> ColorImage<u16> {
-        ColorImage {
-            width: w,
-            height: h,
-            maxval: m,
+impl TryFrom<ImageHeader<'_>> for ColorImage<u16> {
+    type Error = io::Error;
+    fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
+        Ok(Self {
+            width: hdr.width,
+            height: hdr.height,
+            maxval: hdr.maxval,
             rpixels: vec![0],
             gpixels: vec![0],
             bpixels: vec![0]
-        }
+        })
     }
 }
 
-impl FromRaster for GrayImage<u8> {
-    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> GrayImage<u8> {
-        GrayImage {
-            width: w,
-            height: h,
-            maxval: m,
+impl TryFrom<ImageHeader<'_>> for GrayImage<u8> {
+    type Error = io::Error;
+    fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
+        Ok(Self {
+            width: hdr.width,
+            height: hdr.height,
+            maxval: hdr.maxval,
             pixels: vec![0]
-        }
+        })
     }
 }
 
-impl FromRaster for GrayImage<u16> {
-    fn from_raster(w: usize, h: usize, m: usize, data: &[u8]) -> GrayImage<u16> {
-        GrayImage {
-            width: w,
-            height: h,
-            maxval: m,
+impl TryFrom<ImageHeader<'_>> for GrayImage<u16> {
+    type Error = io::Error;
+    fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
+        Ok(Self {
+            width: hdr.width,
+            height: hdr.height,
+            maxval: hdr.maxval,
             pixels: vec![0]
-        }
+        })
     }
 }
 
