@@ -114,7 +114,8 @@ fn get_image_header(filedata: &[u8]) -> io::Result<ImageHeader> {
     // iterator over the data
     let mut scanner = filedata.iter().enumerate().skip(2);
 
-    // stores values returned
+    // stores values extracted from the image header:
+    // [width, height, maxval, raster_start]
     let mut params = Vec::<usize>::with_capacity(4);
 
     // index into data where we start interpreting a value as a string
@@ -167,10 +168,10 @@ fn get_image_header(filedata: &[u8]) -> io::Result<ImageHeader> {
                                             // save the succesffully interpreted value
                                             params.push(v);
 
-                                            // also save our index if we've found width, length,
-                                            // maxval
+                                            // if we've found width, length, maxval
+                                            // then mark where the raster starts
                                             if params.len() == 3 {
-                                                params.push(i);
+                                                params.push(i + 1);
                                             }
                                         }
                                         Err(_) => {
@@ -231,10 +232,10 @@ fn get_image_header(filedata: &[u8]) -> io::Result<ImageHeader> {
 
 fn get_kind(filedata: &[u8]) -> io::Result<(ImageKind, RasterKind)> {
     match &filedata[0..2] {
-        b"P6" => Ok((ImageKind::Grayscale, RasterKind::Ascii)),
-        b"P5" => Ok((ImageKind::Color,     RasterKind::Ascii)),
-        b"P3" => Ok((ImageKind::Grayscale, RasterKind::Raw)),
-        b"P2" => Ok((ImageKind::Color,     RasterKind::Raw)),
+        b"P2" => Ok((ImageKind::Grayscale, RasterKind::Ascii)),
+        b"P3" => Ok((ImageKind::Color,     RasterKind::Ascii)),
+        b"P5" => Ok((ImageKind::Grayscale, RasterKind::Raw)),
+        b"P6" => Ok((ImageKind::Color,     RasterKind::Raw)),
         [one, two] => {
             Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -257,52 +258,75 @@ fn get_kind(filedata: &[u8]) -> io::Result<(ImageKind, RasterKind)> {
 impl TryFrom<ImageHeader<'_>> for ColorImage<u8> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-        Ok(Self {
-            width: hdr.width,
-            height: hdr.height,
-            maxval: hdr.maxval,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        })
+
+        if hdr.is_ascii_raster {
+            unimplemented!();
+        } else {
+            // for raw files, make sure raster size is consistent w/ header
+            let expected_len = hdr.width * hdr.height * 3;
+            if hdr.raster.len() != expected_len {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "Inconsistent raster size '{}' (expected '{}')",
+                        hdr.raster.len(),
+                        expected_len
+                    )
+                ));
+            }
+
+            // each channel holds `size` pixels, so just preallocate enough heap
+            let size = hdr.width * hdr.height;
+            let mut rs: Vec<u8> = Vec::with_capacity(size);
+            let mut gs: Vec<u8> = Vec::with_capacity(size);
+            let mut bs: Vec<u8> = Vec::with_capacity(size);
+
+            // iterate through in chunks of three,
+            // putting pixels in their correct channel
+            hdr.raster.chunks(3).for_each(
+                |x| match x {
+                    [r,g,b] => {
+                        rs.push(*r);
+                        gs.push(*g);
+                        bs.push(*b);
+                    },
+                    _ => {
+                        // we verified expected_len so we shouldn't get here
+                        panic!("Bad raster chunk");
+                    }
+                },
+            );
+
+            Ok(Self {
+                width: hdr.width,
+                height: hdr.height,
+                maxval: hdr.maxval,
+                rpixels: rs,
+                gpixels: gs,
+                bpixels: bs
+            })
+        }
     }
 }
 
 impl TryFrom<ImageHeader<'_>> for ColorImage<u16> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-        Ok(Self {
-            width: hdr.width,
-            height: hdr.height,
-            maxval: hdr.maxval,
-            rpixels: vec![0],
-            gpixels: vec![0],
-            bpixels: vec![0]
-        })
+        unimplemented!()
     }
 }
 
 impl TryFrom<ImageHeader<'_>> for GrayImage<u8> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-        Ok(Self {
-            width: hdr.width,
-            height: hdr.height,
-            maxval: hdr.maxval,
-            pixels: vec![0]
-        })
+        unimplemented!()
     }
 }
 
 impl TryFrom<ImageHeader<'_>> for GrayImage<u16> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-        Ok(Self {
-            width: hdr.width,
-            height: hdr.height,
-            maxval: hdr.maxval,
-            pixels: vec![0]
-        })
+        unimplemented!()
     }
 }
 

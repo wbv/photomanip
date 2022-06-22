@@ -1,7 +1,7 @@
 /////////////////////////////
 // unit tests for image.rs //
 /////////////////////////////
-use super::{ColorImage, GrayImage};
+use super::{Image, ColorImage, GrayImage};
 use super::load_from_file;
 
 ////////////////////////////////
@@ -88,6 +88,24 @@ fn open_valid_image_files() {
         let good_img = load_from_file(&img_path);
         assert!(good_img.is_ok());
         println!("{:?}", good_img.unwrap());
+    }
+}
+
+#[test]
+fn open_color8_raw_image() {
+    match load_from_file(&(img_folder() + "feep_raw.ppm")).unwrap() {
+        Image::Color8(img) => {
+            assert_eq!(img.rpixels.len(), 16);
+            assert_eq!(img.gpixels.len(), 16);
+            assert_eq!(img.bpixels.len(), 16);
+            assert_eq!(img.rpixels[0], 0);
+            assert_eq!(img.rpixels[3], 15);
+            assert_eq!(img.gpixels[5], 15);
+            assert_eq!(img.bpixels[10], 7);
+        }
+        x => {
+            panic!("Parsed into wrong image type {:?}", x);
+        }
     }
 }
 
