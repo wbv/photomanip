@@ -258,7 +258,6 @@ fn get_kind(filedata: &[u8]) -> io::Result<(ImageKind, RasterKind)> {
 impl TryFrom<ImageHeader<'_>> for ColorImage<u8> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-
         if hdr.is_ascii_raster {
             unimplemented!();
         } else {
@@ -312,21 +311,119 @@ impl TryFrom<ImageHeader<'_>> for ColorImage<u8> {
 impl TryFrom<ImageHeader<'_>> for ColorImage<u16> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-        unimplemented!()
+        if hdr.is_ascii_raster {
+            unimplemented!();
+        } else {
+            // for raw files, make sure raster size is consistent w/ header
+            let expected_len = hdr.width * hdr.height * 3 * 2;
+            if hdr.raster.len() != expected_len {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "Inconsistent raster size '{}' (expected '{}')",
+                        hdr.raster.len(),
+                        expected_len
+                    )
+                ));
+            }
+
+            // each channel holds `size` pixels, so just preallocate enough heap
+            let size = hdr.width * hdr.height;
+            let mut rs: Vec<u16> = Vec::with_capacity(size);
+            let mut gs: Vec<u16> = Vec::with_capacity(size);
+            let mut bs: Vec<u16> = Vec::with_capacity(size);
+
+            // iterate through in chunks of three pixels,
+            // putting pixels in their correct channel
+            hdr.raster.chunks(3 * 2).for_each(
+                |x| match x {
+                    [rh,rl,gh,gl,bh,bl] => {
+                        rs.push(((*rh as u16) << 8) | (*rl as u16));
+                        gs.push(((*gh as u16) << 8) | (*gl as u16));
+                        bs.push(((*bh as u16) << 8) | (*bl as u16));
+                    },
+                    _ => {
+                        // we verified expected_len so we shouldn't get here
+                        panic!("Bad raster chunk");
+                    }
+                },
+            );
+
+            Ok(Self {
+                width: hdr.width,
+                height: hdr.height,
+                maxval: hdr.maxval,
+                rpixels: rs,
+                gpixels: gs,
+                bpixels: bs
+            })
+        }
     }
 }
 
 impl TryFrom<ImageHeader<'_>> for GrayImage<u8> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-        unimplemented!()
+        if hdr.is_ascii_raster {
+            unimplemented!();
+        } else {
+            // for raw files, make sure raster size is consistent w/ header
+            let expected_len = hdr.width * hdr.height;
+            if hdr.raster.len() != expected_len {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "Inconsistent raster size '{}' (expected '{}')",
+                        hdr.raster.len(),
+                        expected_len
+                    )
+                ));
+            }
+
+            Ok(Self {
+                width: hdr.width,
+                height: hdr.height,
+                maxval: hdr.maxval,
+                pixels: hdr.raster.to_vec()
+            })
+        }
     }
 }
 
 impl TryFrom<ImageHeader<'_>> for GrayImage<u16> {
     type Error = io::Error;
     fn try_from(hdr: ImageHeader) -> Result<Self, Self::Error> {
-        unimplemented!()
+        if hdr.is_ascii_raster {
+            unimplemented!();
+        } else {
+            // for raw files, make sure raster size is consistent w/ header
+            let expected_len = hdr.width * hdr.height * 3 * 2;
+            if hdr.raster.len() != expected_len {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "Inconsistent raster size '{}' (expected '{}')",
+                        hdr.raster.len(),
+                        expected_len
+                    )
+                ));
+            }
+
+            Ok(Self {
+                width: hdr.width,
+                height: hdr.height,
+                maxval: hdr.maxval,
+                pixels:
+                    hdr.raster
+                        .chunks(2)
+                        .map(|x| match x {
+                            [hi,lo] => ((*hi as u16) << 8) | (*lo as u16),
+                             // we verified expected_len so shouldn't ever get here
+                            _ => panic!("Bad raster chunk")
+                            })
+                        .collect()
+            })
+        }
     }
 }
 
