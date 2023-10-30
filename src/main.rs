@@ -1,11 +1,10 @@
-use std::env;
-
 mod args;
 mod image;
 
+use args::ProgOpts;
 
 fn main() -> Result<(), ()> {
-    let _ = args::parse(env::args());
+    let _ = ProgOpts::from_env();
 
     Ok(())
 }

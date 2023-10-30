@@ -1,9 +1,5 @@
-use super::{ManipOption, OutputMode, ProgOpts, parse};
+use super::*;
 
-// form an env::Args -like String iterator
-fn to_args(cmd: &'static str) -> Vec<String> {
-    cmd.split(' ').map(|s| String::from(s)).collect()
-}
 
 #[test]
 fn outbin() {
@@ -14,8 +10,7 @@ fn outbin() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-ob infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-ob infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -28,8 +23,7 @@ fn outascii() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-oa infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-oa infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -42,8 +36,7 @@ fn outfile() {
         outfile: String::from("test!"),
     };
 
-    let cmdline = to_args("-oa infile test!");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-oa infile test!".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -56,8 +49,7 @@ fn infile() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-oa tested! outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-oa tested! outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -70,8 +62,7 @@ fn negate() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-n -oa infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-n -oa infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -84,16 +75,13 @@ fn brighten() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-b 24 -oa infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-b 24 -oa infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
 #[test]
 fn brighten_noarg() {
-    let cmdline = to_args("-b -oa infile outfile");
-    let got = parse(cmdline.into_iter());
-    assert_eq!(got, Err(()));
+    assert!("-b -oa infile outfile".parse::<ProgOpts>().is_err());
 }
 
 #[test]
@@ -105,8 +93,7 @@ fn contrast() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-c -oa infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-c -oa infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -119,8 +106,7 @@ fn grayscale() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-g -oa infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-g -oa infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -133,8 +119,7 @@ fn smooth() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-s -oa infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-s -oa infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
@@ -147,42 +132,31 @@ fn sharpen() {
         outfile: String::from("outfile"),
     };
 
-    let cmdline = to_args("-p -oa infile outfile");
-    let got = parse(cmdline.into_iter()).unwrap();
+    let got: ProgOpts = "-p -oa infile outfile".parse().unwrap();
     assert_eq!(got, should_be);
 }
 
 #[test]
 fn extra_contrast_arg() {
-    let cmdline = to_args("-c 69 -oa infile outfile");
-    let got = parse(cmdline.into_iter());
-    assert_eq!(got, Err(()));
+    assert!("-c 69 -oa infile outfile".parse::<ProgOpts>().is_err());
 }
 
 #[test]
 fn two_args() {
-    let cmdline = to_args("-c bad");
-    let got = parse(cmdline.into_iter());
-    assert_eq!(got, Err(()));
+    assert!("-c bad".parse::<ProgOpts>().is_err());
 }
 
 #[test]
 fn one_arg() {
-    let cmdline = to_args("bad");
-    let got = parse(cmdline.into_iter());
-    assert_eq!(got, Err(()));
+    assert!("bad".parse::<ProgOpts>().is_err());
 }
 
 #[test]
 fn no_args() {
-    let cmdline = to_args("");
-    let got = parse(cmdline.into_iter());
-    assert_eq!(got, Err(()));
+    assert!("".parse::<ProgOpts>().is_err());
 }
 
 #[test]
 fn six_args() {
-    let cmdline = to_args("1 2 3 4 5 6");
-    let got = parse(cmdline.into_iter());
-    assert_eq!(got, Err(()));
+    assert!("1 2 3 4 5 6".parse::<ProgOpts>().is_err());
 }
