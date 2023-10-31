@@ -61,23 +61,23 @@ impl ProgOpts {
             },
             5 => match args[0].as_str() {
                 "-b" => ManipOption::Brighten(usize::from_str_radix(&args[1], 10).unwrap()),
-                _ => return Err(format!("")),
+                _ => return Err(String::new()),
             },
-            _ => return Err(format!("")),
+            _ => return Err(String::new()),
         };
 
         let mode = match args[args.len() - 3].as_str() {
             "-oa" => OutputMode::Ascii,
             "-ob" => OutputMode::Binary,
-            _ => return Err(format!("")),
+            _ => return Err(String::new()),
         };
 
-        return Ok(ProgOpts {
+        Ok(ProgOpts {
             op,
             mode,
             infile: args[args.len() - 2].clone(),
             outfile: args[args.len() - 1].clone(),
-        });
+        })
     }
 }
 

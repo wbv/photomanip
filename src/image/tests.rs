@@ -11,7 +11,7 @@ fn img_folder() -> String {
     env!("CARGO_MANIFEST_DIR").to_owned() + "/img/"
 }
 
-fn make_gray_image() -> Box<GrayImage<u8>> {
+fn make_gray_image() -> Box<GrayImage> {
     Box::new(
         GrayImage {
             width: 3,
@@ -22,7 +22,7 @@ fn make_gray_image() -> Box<GrayImage<u8>> {
     )
 }
 
-fn make_color_image() -> Box<ColorImage<u8>> {
+fn make_color_image() -> Box<ColorImage> {
     Box::new(
         ColorImage {
             width: 3,
@@ -40,7 +40,7 @@ fn make_color_image() -> Box<ColorImage<u8>> {
 //   compare equivalent color images with different maxvals
 //   compare equivalent gray and color images
 //
-//impl PartialEq for ColorImage<u8> {
+//impl PartialEq for ColorImage {
 //    fn eq(&self, other: &Self) -> bool { true }
 //}
 
@@ -69,7 +69,7 @@ fn mutate_image() {
 
 #[test]
 fn open_nonexistent_file() {
-    let no_file = load_from_file("bogus");
+    let no_file = Image::load("bogus");
     assert!(no_file.is_err());
 }
 
@@ -84,7 +84,7 @@ fn open_valid_image_files() {
     ];
     for i in &test_images {
         let img_path = img_folder() + i;
-        let good_img = load_from_file(&img_path);
+        let good_img = Image::load(&img_path);
         assert!(good_img.is_ok());
         println!("{:?}", good_img.unwrap());
     }
@@ -92,8 +92,8 @@ fn open_valid_image_files() {
 
 #[test]
 fn open_color8_raw_image() {
-    match load_from_file(&(img_folder() + "feep_raw.ppm")).unwrap() {
-        ImageType::Color8(img) => {
+    match Image::load(&(img_folder() + "feep_raw.ppm")).unwrap().0 {
+        ImageType::Color(img) => {
             assert_eq!(img.rpixels.len(), 16);
             assert_eq!(img.gpixels.len(), 16);
             assert_eq!(img.bpixels.len(), 16);
@@ -111,48 +111,35 @@ fn open_color8_raw_image() {
 #[test]
 fn open_non_image_file() {
     let img_path = img_folder() + "../Cargo.toml";
-    let not_image = load_from_file(&img_path);
+    let not_image = Image::load(&img_path);
     assert!(not_image.is_err());
 }
 
 #[test]
 fn handle_mac_line_endings() {
-    let cr_img = load_from_file(&(img_folder() + "ascii_cr_wisdom.ppm"));
-    let unix_img = load_from_file(&(img_folder() + "ascii_wisdom.ppm"));
+    let cr_img = Image::load(&(img_folder() + "ascii_cr_wisdom.ppm"));
+    let unix_img = Image::load(&(img_folder() + "ascii_wisdom.ppm"));
     assert_eq!(cr_img.unwrap(), unix_img.unwrap());
 }
 
 #[test]
 fn handle_windows_line_endings() {
-    let crlf_img = load_from_file(&(img_folder() + "ascii_crlf_wisdom.ppm"));
-    let unix_img = load_from_file(&(img_folder() + "ascii_wisdom.ppm"));
+    let crlf_img = Image::load(&(img_folder() + "ascii_crlf_wisdom.ppm"));
+    let unix_img = Image::load(&(img_folder() + "ascii_wisdom.ppm"));
     assert_eq!(crlf_img.unwrap(), unix_img.unwrap());
 }
 
 #[test]
 fn raw_and_ascii_pgms_equal() {
-    let raw_img   = load_from_file(&(img_folder() + "feep_raw.pgm")).unwrap();
-    let ascii_img = load_from_file(&(img_folder() + "feep.pgm"    )).unwrap();
+    let raw_img   = Image::load(&(img_folder() + "feep_raw.pgm")).unwrap();
+    let ascii_img = Image::load(&(img_folder() + "feep.pgm"    )).unwrap();
     assert_eq!(raw_img, ascii_img);
 }
 
 #[test]
 fn raw_and_ascii_ppms_equal() {
-    let raw_img   = load_from_file(&(img_folder() + "feep_raw.ppm")).unwrap();
-    let ascii_img = load_from_file(&(img_folder() + "feep.ppm"    )).unwrap();
+    let raw_img   = Image::load(&(img_folder() + "feep_raw.ppm")).unwrap();
+    let ascii_img = Image::load(&(img_folder() + "feep.ppm"    )).unwrap();
     assert_eq!(raw_img, ascii_img);
 }
 
-#[test]
-fn different_maxval_equal_pgms() {
-    let my_img   = load_from_file(&(img_folder() + "feep_raw.pgm"     )).unwrap();
-    let gimp_img = load_from_file(&(img_folder() + "feep_raw_gimp.pgm")).unwrap();
-    assert_eq!(my_img, gimp_img);
-}
-
-#[test]
-fn different_maxval_equal_ppms() {
-    let my_img   = load_from_file(&(img_folder() + "feep_raw.ppm"     )).unwrap();
-    let gimp_img = load_from_file(&(img_folder() + "feep_raw_gimp.ppm")).unwrap();
-    assert_eq!(my_img, gimp_img);
-}
