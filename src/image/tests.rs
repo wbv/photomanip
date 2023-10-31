@@ -1,8 +1,7 @@
 /////////////////////////////
 // unit tests for image.rs //
 /////////////////////////////
-use super::{Image, ColorImage, GrayImage};
-use super::load_from_file;
+use super::*;
 
 ////////////////////////////////
 // Helper functions for tests //
@@ -94,7 +93,7 @@ fn open_valid_image_files() {
 #[test]
 fn open_color8_raw_image() {
     match load_from_file(&(img_folder() + "feep_raw.ppm")).unwrap() {
-        Image::Color8(img) => {
+        ImageType::Color8(img) => {
             assert_eq!(img.rpixels.len(), 16);
             assert_eq!(img.gpixels.len(), 16);
             assert_eq!(img.bpixels.len(), 16);

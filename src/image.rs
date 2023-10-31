@@ -1,8 +1,6 @@
 use std::io;
-
 use std::io::Read;
 use std::fs::File;
-
 use std::convert::{TryFrom, TryInto};
 
 #[cfg(test)]
@@ -27,20 +25,24 @@ pub struct GrayImage<Depth> {
 }
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
-pub enum Image {
+pub enum ImageType {
     Grayscale8(Box<GrayImage<u8>>),
     Grayscale16(Box<GrayImage<u16>>),
     Color8(Box<ColorImage<u8>>),
     Color16(Box<ColorImage<u16>>),
 }
 
+pub struct Image(ImageType);
 
-enum ImageKind {
+impl Image {
+}
+
+enum ColorType {
     Grayscale,
     Color
 }
 
-enum RasterKind {
+enum RasterType {
     Ascii,
     Raw
 }
@@ -55,8 +57,8 @@ struct ImageHeader<'a> {
 }
 
 
-/// Tries to construct an [`Image`] from the file located at `path`.
-pub fn load_from_file(path: &str) -> io::Result<Image> {
+/// Tries to construct an [`ImageType`] from the file located at `path`.
+pub fn load_from_file(path: &str) -> io::Result<ImageType> {
     let mut data = Vec::<u8>::new();
     let mut file = File::open(path)?;
     let _ = file.read_to_end(&mut data)?;
@@ -67,19 +69,19 @@ pub fn load_from_file(path: &str) -> io::Result<Image> {
     match (hdr.is_color, hdr.maxval > 255) {
         (true, true) => {
             let img: ColorImage<u16> = hdr.try_into()?;
-            Ok(Image::Color16(Box::new(img)))
+            Ok(ImageType::Color16(Box::new(img)))
         }
         (true, false) => {
             let img: ColorImage<u8> = hdr.try_into()?;
-            Ok(Image::Color8(Box::new(img)))
+            Ok(ImageType::Color8(Box::new(img)))
         }
         (false, true) => {
             let img: GrayImage<u16> = hdr.try_into()?;
-            Ok(Image::Grayscale16(Box::new(img)))
+            Ok(ImageType::Grayscale16(Box::new(img)))
         }
         (false, false) => {
             let img: GrayImage<u8> = hdr.try_into()?;
-            Ok(Image::Grayscale8(Box::new(img)))
+            Ok(ImageType::Grayscale8(Box::new(img)))
         }
     }
 }
@@ -215,13 +217,13 @@ fn get_image_header(filedata: &[u8]) -> io::Result<ImageHeader> {
     Ok(ImageHeader {
         is_color:
             match color_kind {
-                ImageKind::Color => true,
-                ImageKind::Grayscale => false
+                ColorType::Color => true,
+                ColorType::Grayscale => false
             },
         is_ascii_raster:
             match raster_kind {
-                RasterKind::Ascii => true,
-                RasterKind::Raw => false
+                RasterType::Ascii => true,
+                RasterType::Raw => false
             },
         width: params[0],
         height: params[1],
@@ -230,12 +232,12 @@ fn get_image_header(filedata: &[u8]) -> io::Result<ImageHeader> {
     })
 }
 
-fn get_kind(filedata: &[u8]) -> io::Result<(ImageKind, RasterKind)> {
+fn get_kind(filedata: &[u8]) -> io::Result<(ColorType, RasterType)> {
     match &filedata[0..2] {
-        b"P2" => Ok((ImageKind::Grayscale, RasterKind::Ascii)),
-        b"P3" => Ok((ImageKind::Color,     RasterKind::Ascii)),
-        b"P5" => Ok((ImageKind::Grayscale, RasterKind::Raw)),
-        b"P6" => Ok((ImageKind::Color,     RasterKind::Raw)),
+        b"P2" => Ok((ColorType::Grayscale, RasterType::Ascii)),
+        b"P3" => Ok((ColorType::Color,     RasterType::Ascii)),
+        b"P5" => Ok((ColorType::Grayscale, RasterType::Raw)),
+        b"P6" => Ok((ColorType::Color,     RasterType::Raw)),
         [one, two] => {
             Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
